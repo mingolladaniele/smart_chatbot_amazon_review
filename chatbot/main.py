@@ -8,7 +8,7 @@ from langchain.chat_models import ChatOpenAI
 from langchain.vectorstores import FAISS
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
-from utils.html_templates import css, bot_template, user_template
+from streamlit_chat import message
 
 def get_json_text(json_docs):
     df_list = []
@@ -37,7 +37,7 @@ def get_vector_store(text_chunks):
     return vector_store
 
 def get_conversation_chain(vector_store):
-    llm = ChatOpenAI()
+    llm = ChatOpenAI(temperature=0, model='gpt-3.5-turbo')
     memory = ConversationBufferMemory(memory_key='chat_history', return_messages=True)
     # TODO: understand it better
     conversation_chain = ConversationalRetrievalChain.from_llm(
@@ -49,18 +49,15 @@ def get_conversation_chain(vector_store):
 
 def handle_user_input(user_question):
     response = st.session_state.conversation({'question': user_question})
-    st.session_state.chat_history = response['chat_history']
-    for i, message in enumerate(st.session_state.chat_history):
+    for i, msg in enumerate(response['chat_history']):
         if i % 2 == 0:
-            st.write(user_template.replace("{{MSG}}", message.content), unsafe_allow_html=True)
+            message(msg.content, is_user=True, key=str(i) + '_user')
         else:
-            st.write(bot_template.replace("{{MSG}}", message.content), unsafe_allow_html=True)
+            message(msg.content, is_user=False, key=str(i) + '_ai')
 
 def main():
     load_dotenv()
     st.set_page_config(page_title="ChatBot for Amazon Reviews", page_icon='🤖')
-    # TODO: dont reccomended to use this option set to true
-    st.write(css, unsafe_allow_html=True)
 
     if "conversation" not in st.session_state:
         st.session_state.conversation = None
@@ -68,7 +65,7 @@ def main():
         st.session_state.chat_history = None
 
     st.header("ChatBot for Amazon Reviews 🤖")
-    user_question = st.text_input("Ask a question about your documents:")
+    user_question = st.chat_input("Say something")
     if user_question:
         handle_user_input(user_question)
 
@@ -87,5 +84,7 @@ def main():
                     vector_store = get_vector_store(text_chunks)
                     # create conversation chain
                     st.session_state.conversation = get_conversation_chain(vector_store)
+
+
 if __name__ == '__main__':
     main()
