@@ -1,10 +1,4 @@
-# files used to train the model
-data/*
-
-# sensible doc & presentation
-doc/*
-
-# env
+# API
 *.env
 
 # py
