@@ -1,0 +1,8 @@
+# files used to train the model
+data/*
+
+# sensible doc & presentation
+doc/*
+
+# api
+api-key.yaml
