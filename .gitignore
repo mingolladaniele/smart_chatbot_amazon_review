@@ -3,6 +3,5 @@ data/*
 
 # sensible doc & presentation
 doc/*
-
-# api
-api-key.yaml
+# env
+*.env
