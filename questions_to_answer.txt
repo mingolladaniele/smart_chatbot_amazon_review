@@ -1,3 +1,0 @@
-- why text in chunks and diff results if we change the size?
-- talk about cost of using openai embedders -> alternative is instructor-embedding but slower since it's local
-    - here a leaderboard for text embedders: https://huggingface.co/spaces/mteb/leaderboard
