@@ -1,90 +1,54 @@
 import streamlit as st
 from dotenv import load_dotenv
-import pandas as pd
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.chat_models import ChatOpenAI
-# TODO: this db for text embeddings is not permanent
-from langchain.vectorstores import FAISS
-from langchain.memory import ConversationBufferMemory
-from langchain.chains import ConversationalRetrievalChain
-from streamlit_chat import message
+from utils.data_preprocessing import load_json_docs, split_text_into_chunks, create_vector_store
+from utils.chatbot_functions import init_conversation_chain, handle_user_input
 
-def get_json_text(json_docs):
-    df_list = []
-    for j_file in json_docs:
-        df = pd.read_json(j_file, lines=True)
-        st.write(df[0:1000])
-        # TODO: could be usefull to add as col the value in the col 'style'
-        df = df[['overall', 'reviewTime', 'reviewText', 'summary']]
-        df_list.append(df)
-    final_df = pd.concat(df_list)
-    return final_df.to_string(header=False)
-        
-def get_text_chunks(text):
-    text_splitter = CharacterTextSplitter(
-        separator= '\n'
-        # TODO: to change, check length each line
-        # n chars in a chunk
-        # how many chars to consider since the end of the previous chunk -> avoiding losing context
-    )
-    chunks = text_splitter.split_text(text)
-    return chunks
 
-def get_vector_store(text_chunks):
-    embeddings = OpenAIEmbeddings()
-    vector_store = FAISS.from_texts(texts= text_chunks, embedding=embeddings)
-    return vector_store
-
-def get_conversation_chain(vector_store):
-    llm = ChatOpenAI(temperature=0, model='gpt-3.5-turbo')
-    memory = ConversationBufferMemory(memory_key='chat_history', return_messages=True)
-    # TODO: understand it better
-    conversation_chain = ConversationalRetrievalChain.from_llm(
-        llm = llm,
-        retriever=vector_store.as_retriever(),
-        memory = memory
-    )
-    return conversation_chain
-
-def handle_user_input(user_question):
-    response = st.session_state.conversation({'question': user_question})
-    for i, msg in enumerate(response['chat_history']):
-        if i % 2 == 0:
-            message(msg.content, is_user=True, key=str(i) + '_user')
-        else:
-            message(msg.content, is_user=False, key=str(i) + '_ai')
-
-def main():
+def init_settings():
+    # Load API credentials & set up session state for conversation
     load_dotenv()
-    st.set_page_config(page_title="ChatBot for Amazon Reviews", page_icon='🤖')
-
     if "conversation" not in st.session_state:
         st.session_state.conversation = None
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = None
 
-    st.header("ChatBot for Amazon Reviews 🤖")
-    user_question = st.chat_input("Say something")
-    if user_question:
-        handle_user_input(user_question)
+    # Configure Streamlit UI settings
+    st.set_page_config(
+        page_title="ChatBot for Amazon Reviews",
+        page_icon="🤖",
+        initial_sidebar_state="expanded",
+    )
 
+    st.header("Smart Chatbot for Amazon Product Reviews")
+    st.caption(
+        "This chatbot offers a natural conversational experience, helping users explore reviewer insights and learn about good reviews.\n\
+        **Remember to upload your JSON files from the sidebar before asking questions!**"
+    )
+    st.divider()
+
+
+def main():
+    init_settings()
     with st.sidebar:
-        st.subheader("Your documents")
-        json_docs = st.file_uploader("Upload your JSON here and click on 'Process'", accept_multiple_files=True, type=['json'])
-        # TODO: add error msg if usr doesnt upload a file
+        st.subheader("YOUR DOCUMENTS")
+        json_docs = st.file_uploader(
+            "Upload your JSON files.\n\n**They all must have the same structure!**",
+            accept_multiple_files=True,
+            type=["json"],
+        )
         if json_docs:
-            # button shows only after file uploded
             if st.button("Process"):
-                with st.spinner("Processing"):      
-                    # get the json text
-                    raw_text = get_json_text(json_docs)
-                    text_chunks = get_text_chunks(raw_text)
-                    # create vector store
-                    vector_store = get_vector_store(text_chunks)
-                    # create conversation chain
-                    st.session_state.conversation = get_conversation_chain(vector_store)
+                with st.spinner("Processing"):
+                    df = load_json_docs(json_docs)
+                    text_chunks = split_text_into_chunks(df.to_string(header=False))
+                    vector_store = create_vector_store(text_chunks)
+                    st.session_state.conversation = init_conversation_chain(
+                        vector_store
+                    )
 
+    # Display chat input only if conversation state is initialized
+    if st.session_state.conversation:
+        user_question = st.chat_input(placeholder="Enter your question...")
+        if user_question:
+            handle_user_input(user_question, st.session_state.conversation)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
