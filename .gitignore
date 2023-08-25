@@ -3,5 +3,9 @@ data/*
 
 # sensible doc & presentation
 doc/*
+
 # env
 *.env
+
+# py
+__pycache__/
