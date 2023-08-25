@@ -1,6 +1,6 @@
 version: "1"
 services:
-  streamlit:
+  chatbot:
     build: .
     command: "streamlit run main.py"
     ports:
