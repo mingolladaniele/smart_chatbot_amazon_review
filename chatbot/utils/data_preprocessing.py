@@ -17,7 +17,7 @@ def load_json_docs(json_docs):
     df_list = []
     for j_file in json_docs:
         df = pd.read_json(j_file, lines=True)
-        df = df[["overall", "reviewTime", "reviewText", "summary"]]
+        df = df[["overall", "reviewText"]]
         df_list.append(df)
     final_df = pd.concat(df_list)
     return final_df
